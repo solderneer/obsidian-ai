@@ -58,7 +58,7 @@ If your plugin does not need CSS, delete this file.
 .chat-messages {
 	max-height: 400px;
 	display: flex;
-  	justify-content: end;
+	justify-content: end;
 	flex-direction: column;
 
 	overflow-y: auto;

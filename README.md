@@ -7,12 +7,14 @@ This plugin aims to bring **every useful AI-powered** feature to Obsidian while 
 Powered by [Supabase Vector](https://supabase.com/vector) and the [OpenAI API](https://platform.openai.com/docs/introduction).
 
 ## Features
+
 - ✅ Semantic search over your notes
 - ✅ Talk to your notes
 - ✅ Simple unified UI
 - ✅ Public endpoint to allow others to talk to your notes
-  
+
 ## Wishlist
+
 - Suggest related notes to link to the active note
 - Suggest tags for note
 - Hybrid search with keyword and semantic matching
@@ -22,14 +24,17 @@ Powered by [Supabase Vector](https://supabase.com/vector) and the [OpenAI API](h
 If you have any requests, let me know by opening an issue :)
 
 ## Demo
+
 ![](demo.gif)
 
 ## Installation
+
 This plugin uses Supabase, and you can choose if you prefer a remote project or a local one. I will provide instructions for setting it up either way. I recommend the remote approach just for the sake of convenience and reliability.
 
 ### Pre-requisites
+
 1. A Supabase project. You can set up by going to the [Supabase Dashboard](https://supabase.com/dashboard/projects) and following the instructions.
-3. An OpenAI Account and API Key. You can register for one on the [OpenAI website](https://platform.openai.com/docs/quickstart).
+2. An OpenAI Account and API Key. You can register for one on the [OpenAI website](https://platform.openai.com/docs/quickstart).
 
 ### Instructions
 
@@ -39,26 +44,27 @@ _Using Supabase CLI_
 
 1. Install Supabase CLI by following [these instructions](https://supabase.com/docs/guides/cli)
 2. Login to Supabase CLI
-   ```bash
-   supabase login
-   ```
+    ```bash
+    supabase login
+    ```
 3. Clone this repo
-   ```bash
-   git clone git@github.com:solderneer/obsidian-ai.git
-   cd obsidian-ai
-   ```
+    ```bash
+    git clone git@github.com:solderneer/obsidian-ai.git
+    cd obsidian-ai
+    ```
 4. Link to remote project
-   ```bash
-   supabase link --project-ref <project-id>
-   # You can get <project-id> from your project's dashboard URL: https://supabase.com/dashboard/project/<project-id>
+    ```bash
+    supabase link --project-ref <project-id>
+    # You can get <project-id> from your project's dashboard URL: https://supabase.com/dashboard/project/<project-id>
+    ```
 5. Deploy database
-   ```bash
-   supabase db push
-   ```
+    ```bash
+    supabase db push
+    ```
 6. Deploy supabase functions if you want to create a public endpoint for the public documents.
-   ```bash
-   supabase functions deploy
-   ```
+    ```bash
+    supabase functions deploy
+    ```
 
 _Manually_
 
@@ -69,7 +75,7 @@ _Manually_
 #### Install the plugin
 
 _From Community Plugins_
-This plugin is now available directly from within the Obsidian Community Plugins. Navigate to Settings > Community Plugins > Browse, and then search `AI Tools` to find and install it. Alternatively, [click here](https://obsidian.md/plugins?id=ai-tools). You can then proceed on to the setup section below. 
+This plugin is now available directly from within the Obsidian Community Plugins. Navigate to Settings > Community Plugins > Browse, and then search `AI Tools` to find and install it. Alternatively, [click here](https://obsidian.md/plugins?id=ai-tools). You can then proceed on to the setup section below.
 
 _Manually_
 
@@ -101,6 +107,7 @@ _Manually_
 ### Using a local Supabase project instead
 
 #### Pre-requisites
+
 1. A local Supabase environment. Follow the instructions on [the Supabase website](https://supabase.com/docs/guides/getting-started/local-development)
 
 #### Instructions
@@ -108,23 +115,19 @@ _Manually_
 Instead of the Supabase instructions above, do the following instead.
 
 1. Clone this repo and navigate to it
-   ```bash
-   git clone git@github.com:solderneer/obsidian-ai.git
-   cd obsidian-ai
-   ```
+
+    ```bash
+    git clone git@github.com:solderneer/obsidian-ai.git
+    cd obsidian-ai
+    ```
 
 2. Start Supabase locally (you need docker as well)
-   ```bash
-   supabase start
-   ```
+
+    ```bash
+    supabase start
+    ```
 
 3. Apply migrations to set up table
-   ```bash
-   supabase db reset
-   ```
-
-
-   
-
-
-
+    ```bash
+    supabase db reset
+    ```

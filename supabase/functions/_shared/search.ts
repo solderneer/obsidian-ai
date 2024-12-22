@@ -6,6 +6,7 @@ import {
 } from "https://esm.sh/openai-edge@1.2.0";
 import { encode } from "https://esm.sh/gpt-tokenizer@2.1.1";
 import { codeBlock } from "https://esm.sh/common-tags@1.8.2";
+import { config } from "../../../src/config";
 
 export async function generativeSearch(
 	supabaseClient: SupabaseClient,
@@ -14,16 +15,15 @@ export async function generativeSearch(
 	promptIntro: string,
 	matchThreshold = 0.78,
 	matchCount = 10,
-	minContentLength = 50
+	minContentLength = 50,
 ) {
-
 	const matches = await semanticSearch(
 		supabaseClient,
 		openai,
 		query,
 		matchThreshold,
 		matchCount,
-		minContentLength
+		minContentLength,
 	);
 
 	// Only send 1500 tokens maximum
@@ -61,7 +61,7 @@ export async function generativeSearch(
 	};
 
 	const response = await openai.createChatCompletion({
-		model: "gpt-4o-mini",
+		model: config.chatModel,
 		messages: [chatMessage],
 	});
 
@@ -75,12 +75,11 @@ export async function semanticSearch(
 	query: string,
 	matchThreshold = 0.78,
 	matchCount = 10,
-	minContentLength = 50
+	minContentLength = 50,
 ) {
-
 	// Create embedding from query
 	const embeddingResponse = await openai.createEmbedding({
-		model: "text-embedding-3-small",
+		model: config.embeddingModel,
 		input: query.split("\n").join(" "),
 	});
 

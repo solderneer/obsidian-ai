@@ -7,7 +7,11 @@ import {
 	createClient,
 	SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.26.0";
-import { Configuration, OpenAIApi, CreateModerationResponse } from "https://esm.sh/openai-edge@1.2.0";
+import {
+	Configuration,
+	OpenAIApi,
+	CreateModerationResponse,
+} from "https://esm.sh/openai-edge@1.2.0";
 
 import { semanticSearch } from "shared/search.ts";
 
@@ -20,9 +24,13 @@ serve(async (req) => {
 	const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
 
 	// Semantic Search Settings
-	const SEMANTIC_MATCH_THRESHOLD = parseFloat(Deno.env.get("MATCH_THRESHOLD") ?? "0.78");
+	const SEMANTIC_MATCH_THRESHOLD = parseFloat(
+		Deno.env.get("MATCH_THRESHOLD") ?? "0.78",
+	);
 	const SEMANTIC_MATCH_COUNT = parseInt(Deno.env.get("MATCH_COUNT") ?? "10");
-	const SEMANTIC_MIN_CONTENT_LENGTH = parseInt(Deno.env.get("MATCH_COUNT") ?? "50");
+	const SEMANTIC_MIN_CONTENT_LENGTH = parseInt(
+		Deno.env.get("MATCH_COUNT") ?? "50",
+	);
 
 	const { query } = await req.json();
 
@@ -59,18 +67,16 @@ serve(async (req) => {
 		throw new Error("Flagged content");
 	}
 
-	console.log(query)
-
 	const documentSections = await semanticSearch(
 		supabaseClient,
 		openai,
 		query,
 		SEMANTIC_MATCH_THRESHOLD,
 		SEMANTIC_MATCH_COUNT,
-		SEMANTIC_MIN_CONTENT_LENGTH
+		SEMANTIC_MIN_CONTENT_LENGTH,
 	);
 
-	console.log(documentSections)
+	console.log(documentSections);
 
 	return new Response(JSON.stringify(documentSections), {
 		headers: { "Content-Type": "application/json" },

@@ -1,0 +1,62 @@
+# Dependencies
+node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist
+build
+out
+.next
+.nuxt
+.output
+coverage
+
+# Cache & Temp
+.cache
+.temp
+.tmp
+.turbo
+
+# Environment & Config
+.env
+.env.*
+.dockerignore
+.eslintcache
+
+# IDE & Editor
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+.vercel
+.netlify
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Generated files
+public/sw.js
+public/workbox-*.js
+generated
+*.generated.*
+.contentlayer
+
+# Test coverage
+coverage
+.nyc_output
+
+# Debug
+.debug
+
+# Misc
+*.bak
+*.tgz
+.git

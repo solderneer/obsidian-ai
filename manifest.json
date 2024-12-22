@@ -1,10 +1,10 @@
 {
-	"id": "ai-tools",
-	"name": "AI Tools",
-	"version": "1.1.4",
+	"id": "ali-ai-tools",
+	"name": "Ali AI Tools",
+	"version": "1.3.4",
 	"minAppVersion": "0.15.0",
 	"description": "Adding powerful semantic search, generative answers, and other AI tools to Obsidian, using Supabase + OpenAI.",
-	"author": "solderneer",
-	"authorUrl": "https://solderneer.me",
+	"author": "solderneer (recent messing around by oofaish)",
+	"authorUrl": "https://www.cigari.co.uk",
 	"isDesktopOnly": "true"
 }

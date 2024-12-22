@@ -1,4 +1,12 @@
-import { App, SuggestModal, Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
+import {
+	App,
+	SuggestModal,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	Notice,
+	MarkdownView,
+} from "obsidian";
 
 import * as path from "path";
 
@@ -9,13 +17,14 @@ import {
 	Configuration,
 	OpenAIApi,
 	CreateModerationResponse,
-	ChatCompletionRequestMessage
+	ChatCompletionRequestMessage,
 } from "openai-edge";
 
 // Local things
 import { generateEmbeddings } from "./generate-embeddings";
 import { generativeSearch, semanticSearch } from "./search";
 import { truncateString, removeMarkdown } from "./utils";
+import { config } from "./config";
 
 interface SearchSettings {
 	matchThreshold: number;
@@ -28,6 +37,11 @@ interface ObsidianAISettings {
 	supabaseKey: string;
 	openaiKey: string;
 	indexOnOpen: boolean;
+
+	embeddingModel: string;
+	chatModel: string;
+	minParagraphSize: number;
+	maxParagraphSize: number;
 
 	// Directory settings
 	excludedDirs: string;
@@ -48,17 +62,23 @@ const DEFAULT_SETTINGS: ObsidianAISettings = {
 	openaiKey: "",
 	indexOnOpen: false,
 
+	embeddingModel: config.embeddingModel,
+	chatModel: config.chatModel,
+	minParagraphSize: config.minParagraphSize,
+	maxParagraphSize: config.maxParagraphSize,
+
 	excludedDirs: "",
 	excludedDirsList: [],
 
 	publicDirs: "",
 	publicDirsList: [],
 
-	prompt: oneLine`Your name is Obsidian, you are a 22-year-old university student who studies
-		Electronics and Electrical Engineering at University College London. Given
-		the following sections from your notes, answer the question with the provided information. If
-		you are unsure, and the notes don't include relevant information, you may also say
-		"Sorry, I don't know the answer to this question :("`,
+	prompt: oneLine`You are an AI assistant that answers in two clear parts.
+	
+	First, provide a brief answer using ONLY information from the provided context. If you cannot find the answer, say "I cannot find this in the available information."
+	Then, if relevant, add a short "Additional Context:" section with helpful supplemental knowledge.
+
+	Keep all responses concise and to the point.`,
 
 	semanticSearch: {
 		matchThreshold: 0.78,
@@ -95,7 +115,7 @@ export default class ObsidianAIPlugin extends Plugin {
 						persistSession: false,
 						autoRefreshToken: false,
 					},
-				}
+				},
 			);
 		}
 
@@ -147,25 +167,28 @@ export default class ObsidianAIPlugin extends Plugin {
 						this.supabaseClient,
 						this.openai,
 						this.settings.excludedDirsList,
-						this.settings.publicDirsList
-					)
-						.then((result) => {
-							if (result.errorCount == 0) {
-								this.statusBarItemEl.setText("✨ [AI] Loaded");
-								new Notice(`Successfully indexed ${result.successCount} documents with ${result.updatedCount} updates! Removed ${result.deleteCount} deleted documents.`);
-							} else {
-								this.statusBarItemEl.setText("😔 [AI] Error");
-								new Notice(`There were ${result.errorCount} errors! View developer console for more information.`);
-							}
-						});
+						this.settings.publicDirsList,
+					).then((result) => {
+						if (result.errorCount == 0) {
+							this.statusBarItemEl.setText("✨ [AI] Loaded");
+							new Notice(
+								`Successfully indexed ${result.successCount} documents with ${result.updatedCount} updates! Removed ${result.deleteCount} deleted documents.`,
+							);
+						} else {
+							this.statusBarItemEl.setText("😔 [AI] Error");
+							new Notice(
+								`There were ${result.errorCount} errors! View developer console for more information.`,
+							);
+						}
+					});
 				}
 			});
 		}
 
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: "ai-search",
-			name: "AI Search",
+			id: "ali-ai-search",
+			name: "Ali AI Search",
 			checkCallback: (checking: boolean) => {
 				if (this.supabaseClient !== null && this.openai !== null) {
 					if (!checking) {
@@ -175,7 +198,7 @@ export default class ObsidianAIPlugin extends Plugin {
 							this.openai,
 							this.settings.prompt,
 							this.settings.semanticSearch,
-							this.settings.generativeSearch
+							this.settings.generativeSearch,
 						).open();
 					}
 
@@ -197,15 +220,18 @@ export default class ObsidianAIPlugin extends Plugin {
 							this.supabaseClient,
 							this.openai,
 							this.settings.excludedDirsList,
-							this.settings.publicDirsList
-						)
-						.then((result) => {
+							this.settings.publicDirsList,
+						).then((result) => {
 							if (result.errorCount == 0) {
 								this.statusBarItemEl.setText("✨ [AI] Loaded");
-								new Notice(`Successfully indexed ${result.successCount} documents with ${result.updatedCount} updates! Removed ${result.deleteCount} deleted documents.`);
+								new Notice(
+									`Successfully indexed ${result.successCount} documents with ${result.updatedCount} updates! Removed ${result.deleteCount} deleted documents.`,
+								);
 							} else {
 								this.statusBarItemEl.setText("😔 [AI] Error");
-								new Notice(`There were ${result.errorCount} errors! View developer console for more information.`);
+								new Notice(
+									`There were ${result.errorCount} errors! View developer console for more information.`,
+								);
 							}
 						});
 					}
@@ -218,13 +244,13 @@ export default class ObsidianAIPlugin extends Plugin {
 		});
 	}
 
-	onunload() { }
+	onunload() {}
 
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			await this.loadData()
+			await this.loadData(),
 		);
 	}
 
@@ -265,7 +291,7 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		openai: OpenAIApi,
 		prompt: string,
 		semanticSearchSettings: SearchSettings,
-		generativeSearchSettings: SearchSettings
+		generativeSearchSettings: SearchSettings,
 	) {
 		super(app);
 
@@ -321,17 +347,34 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		chatContainerHTML.addClass("chat-container");
 		chatContainerHTML.style.display = "none";
 
-		const backButton = chatContainerHTML.createEl("button", {cls: "chat-back-button", text: "←"});
-		const messageContainer = chatContainerHTML.createDiv({cls: "chat-messages"});
-		const chatInputContainer = chatContainerHTML.createDiv({cls: "chat-input-container"});
-		const chatInput = chatInputContainer.createEl("input", {type: "search", cls: "chat-input", placeholder: "Type your message..."});
+		const backButton = chatContainerHTML.createEl("button", {
+			cls: "chat-back-button",
+			text: "←",
+		});
+		const messageContainer = chatContainerHTML.createDiv({
+			cls: "chat-messages",
+		});
+		const chatInputContainer = chatContainerHTML.createDiv({
+			cls: "chat-input-container",
+		});
+		const chatInput = chatInputContainer.createEl("input", {
+			type: "search",
+			cls: "chat-input",
+			placeholder: "Type your message...",
+		});
 		this.resultContainerEl.before(chatContainerHTML);
 
 		const backButtonListener = async (_: MouseEvent) => {
 			// Register AI chat handlers
-			const promptInput = document.querySelector(".prompt-input-container") as HTMLElement;
-			const promptLeading = document.querySelector(".prompt-leading") as HTMLElement;
-			const promptResults = document.querySelector(".prompt-results") as HTMLElement;
+			const promptInput = document.querySelector(
+				".prompt-input-container",
+			) as HTMLElement;
+			const promptLeading = document.querySelector(
+				".prompt-leading",
+			) as HTMLElement;
+			const promptResults = document.querySelector(
+				".prompt-results",
+			) as HTMLElement;
 
 			promptInput.style.display = "block";
 			promptLeading.style.display = "block";
@@ -347,25 +390,25 @@ class AISearchModal extends SuggestModal<SearchResult> {
 
 		const addMessage = (sender: string, text: string) => {
 			const messageDiv = document.createElement("div");
-			messageDiv.className = "message " + sender
+			messageDiv.className = "message " + sender;
 
 			const messageSender = document.createElement("div");
 			messageSender.className = "message-sender";
-			messageSender.textContent = sender + ':';
-		
+			messageSender.textContent = sender + ":";
+
 			const messageText = document.createElement("div");
 			messageText.className = "message-text";
 			messageText.textContent = text;
-		
+
 			messageDiv.appendChild(messageSender);
 			messageDiv.appendChild(messageText);
-		
+
 			messageContainer.appendChild(messageDiv);
-		}
+		};
 
 		// Setting up the API call context
 		const messageHistory: ChatCompletionRequestMessage[] = [];
-		messageHistory.push({role: "system", content: this.prompt});
+		messageHistory.push({ role: "system", content: this.prompt });
 
 		this.chatSendListener = async (event: KeyboardEvent) => {
 			if (event.shiftKey && event.key === "Enter") {
@@ -374,12 +417,18 @@ class AISearchModal extends SuggestModal<SearchResult> {
 					addMessage("you", message);
 					chatInput.value = "";
 
-					const res = await generativeSearch(this.supabaseClient, this.openai, message, messageHistory, this.generativeSearchSettings.matchThreshold,
+					const res = await generativeSearch(
+						this.supabaseClient,
+						this.openai,
+						message,
+						messageHistory,
+						this.generativeSearchSettings.matchThreshold,
 						this.generativeSearchSettings.matchCount,
-						this.generativeSearchSettings.minContentLength)
-					
+						this.generativeSearchSettings.minContentLength,
+					);
+
 					addMessage("assistant", res);
-					messageHistory.push({role: "assistant", content: res});
+					messageHistory.push({ role: "assistant", content: res });
 				}
 			}
 		};
@@ -394,19 +443,30 @@ class AISearchModal extends SuggestModal<SearchResult> {
 				console.log("Hello!");
 
 				// Disable answer boxes
-				const promptInput = document.querySelector(".prompt-input-container") as HTMLElement;
-				const promptLeading = document.querySelector(".prompt-leading") as HTMLElement;
-				const promptResults = document.querySelector(".prompt-results") as HTMLElement;
+				const promptInput = document.querySelector(
+					".prompt-input-container",
+				) as HTMLElement;
+				const promptLeading = document.querySelector(
+					".prompt-leading",
+				) as HTMLElement;
+				const promptResults = document.querySelector(
+					".prompt-results",
+				) as HTMLElement;
 
 				promptInput.style.display = "none";
 				promptLeading.style.display = "none";
 				promptResults.style.display = "none";
 
 				// Enable chat boxes
-				const chatContainer = document.querySelector(".chat-container") as HTMLElement;
+				const chatContainer = document.querySelector(
+					".chat-container",
+				) as HTMLElement;
 				chatContainer.style.display = "block";
 
-				document.removeEventListener("keydown", this.triggerChatListener);
+				document.removeEventListener(
+					"keydown",
+					this.triggerChatListener,
+				);
 				document.addEventListener("keydown", this.chatSendListener);
 			}
 		};
@@ -421,8 +481,15 @@ class AISearchModal extends SuggestModal<SearchResult> {
 
 	// Returns all available suggestions.
 	async getSuggestions(query: string): Promise<SearchResult[]> {
+		// implement debouncer https://github.com/joethei/obsidian-calibre/blob/master/src/modals/BookSuggestModal.ts#L14
+		console.log('Trying to get suggestions for:', query);
+		if(query.length < 20) {
+			return [];
+		}
+
 		// Sanitize input query
 		// Moderate the content to comply with OpenAI T&C
+		console.log("Looking at suggestions for:", query);
 		const moderationResponse: CreateModerationResponse = await this.openai
 			.createModeration({ input: query.trim() })
 			.then((res) => res.json());
@@ -440,10 +507,11 @@ class AISearchModal extends SuggestModal<SearchResult> {
 				query,
 				this.semanticSearchSettings.matchThreshold,
 				this.semanticSearchSettings.matchCount,
-				this.semanticSearchSettings.minContentLength
+				this.semanticSearchSettings.minContentLength,
 			);
 			return results;
-		} catch(err) {
+		} catch (err) {
+			console.error('ARGH- failed', err);
 			new Notice(`Error: ${err.message}`);
 			return [];
 		}
@@ -466,9 +534,20 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		const files = this.app.vault.getMarkdownFiles();
 		const selected = files.find(
 			(file) =>
-				path.resolve(file.path) === path.resolve(result.document.path)
+				path.resolve(file.path) === path.resolve(result.document.path),
 		);
-		if (selected) leaf.openFile(selected);
+		if (selected) leaf.openFile(selected).then(() => {
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.editor) {
+                const text = result.content;
+                const content = view.editor.getValue();
+                const position = content.indexOf(text);
+                if (position !== -1) {
+                    const pos = view.editor.offsetToPos(position);
+                    view.editor.setCursor(pos);
+                }
+            }
+		});
 	}
 }
 
@@ -488,7 +567,7 @@ class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Excluded Directories")
 			.setDesc(
-				"Enter a list of comma-seperated paths to exclude from indexing"
+				"Enter a list of comma-seperated paths to exclude from indexing",
 			)
 			.addTextArea((text) =>
 				text
@@ -500,13 +579,13 @@ class SettingTab extends PluginSettingTab {
 							.split(",")
 							.map((path) => path.trim());
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
 			.setName("Public Directories")
 			.setDesc(
-				"Enter a list of comma-seperated paths to expose to the public"
+				"Enter a list of comma-seperated paths to expose to the public",
 			)
 			.addTextArea((text) =>
 				text
@@ -518,13 +597,13 @@ class SettingTab extends PluginSettingTab {
 							.split(",")
 							.map((path) => path.trim());
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
 			.setName("Prompt")
 			.setDesc(
-				"Enter a prompt, you can customise the name and instructions"
+				"Enter a prompt, you can customise the name and instructions",
 			)
 			.addTextArea((text) =>
 				text
@@ -533,7 +612,7 @@ class SettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.prompt = oneLine`${value}`;
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -545,7 +624,7 @@ class SettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.indexOnOpen = value;
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		containerEl.createEl("div", {
@@ -561,7 +640,7 @@ class SettingTab extends PluginSettingTab {
 					this.plugin.settings.supabaseUrl = value;
 					await this.plugin.saveSettings();
 					this.plugin.setupSupabase();
-				})
+				}),
 		);
 
 		new Setting(containerEl)
@@ -574,7 +653,7 @@ class SettingTab extends PluginSettingTab {
 						this.plugin.settings.supabaseKey = value;
 						await this.plugin.saveSettings();
 						this.plugin.setupSupabase();
-					})
+					}),
 			);
 
 		new Setting(containerEl).setName("OpenAI API Key").addText((text) =>
@@ -585,7 +664,37 @@ class SettingTab extends PluginSettingTab {
 					this.plugin.settings.openaiKey = value;
 					await this.plugin.saveSettings();
 					this.plugin.setupOpenai();
-				})
+				}),
+		);
+
+		new Setting(containerEl)
+			.setName("Embedding Model")
+			.setDesc("The OpenAI model used for embeddings (read-only)")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.embeddingModel)
+					.setDisabled(true),
+			);
+
+		new Setting(containerEl)
+			.setName("Chat Model")
+			.setDesc("The OpenAI model used for chat completions (read-only)")
+			.addText((text) =>
+				text.setValue(this.plugin.settings.chatModel).setDisabled(true),
+			);
+
+		new Setting(containerEl)
+		.setName("Min Chunk Size")
+		.setDesc("Min chunk size for embeddings (read-only)")
+		.addText((text) =>
+			text.setValue(this.plugin.settings.minParagraphSize.toString()).setDisabled(true),
+		);
+
+		new Setting(containerEl)
+		.setName("Max Chunk Size")
+		.setDesc("Max chunk size for embeddings (read-only)")
+		.addText((text) =>
+			text.setValue(this.plugin.settings.maxParagraphSize.toString()).setDisabled(true),
 		);
 
 		containerEl.createEl("div", {
@@ -596,13 +705,13 @@ class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Match Threshold")
 			.setDesc(
-				"The minimum similarity score to return a match (between 0 and 1)"
+				"The minimum similarity score to return a match (between 0 and 1)",
 			)
 			.addText((text) =>
 				text
 					.setPlaceholder("Enter number")
 					.setValue(
-						this.plugin.settings.semanticSearch.matchThreshold.toString()
+						this.plugin.settings.semanticSearch.matchThreshold.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -610,7 +719,7 @@ class SettingTab extends PluginSettingTab {
 								parseFloat(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -620,7 +729,7 @@ class SettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("Enter integer")
 					.setValue(
-						this.plugin.settings.semanticSearch.matchCount.toString()
+						this.plugin.settings.semanticSearch.matchCount.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -628,7 +737,7 @@ class SettingTab extends PluginSettingTab {
 								parseInt(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -638,7 +747,7 @@ class SettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("Enter integer")
 					.setValue(
-						this.plugin.settings.semanticSearch.minContentLength.toString()
+						this.plugin.settings.semanticSearch.minContentLength.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -646,7 +755,7 @@ class SettingTab extends PluginSettingTab {
 								parseInt(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 
 		containerEl.createEl("div", {
@@ -657,13 +766,13 @@ class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Match Threshold")
 			.setDesc(
-				"The minimum similarity score to return a match (between 0 and 1)"
+				"The minimum similarity score to return a match (between 0 and 1)",
 			)
 			.addText((text) =>
 				text
 					.setPlaceholder("Enter number")
 					.setValue(
-						this.plugin.settings.generativeSearch.matchThreshold.toString()
+						this.plugin.settings.generativeSearch.matchThreshold.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -671,7 +780,7 @@ class SettingTab extends PluginSettingTab {
 								parseFloat(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -681,7 +790,7 @@ class SettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("Enter integer")
 					.setValue(
-						this.plugin.settings.generativeSearch.matchCount.toString()
+						this.plugin.settings.generativeSearch.matchCount.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -689,7 +798,7 @@ class SettingTab extends PluginSettingTab {
 								parseInt(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -699,7 +808,7 @@ class SettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("Enter integer")
 					.setValue(
-						this.plugin.settings.generativeSearch.minContentLength.toString()
+						this.plugin.settings.generativeSearch.minContentLength.toString(),
 					)
 					.onChange(async (value) => {
 						if (!isNaN(parseInt(value))) {
@@ -707,7 +816,7 @@ class SettingTab extends PluginSettingTab {
 								parseInt(value);
 							await this.plugin.saveSettings();
 						}
-					})
+					}),
 			);
 	}
 }

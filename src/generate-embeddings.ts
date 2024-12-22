@@ -1,15 +1,21 @@
 import * as path from "path";
 
-import { TFile, parseYaml } from "obsidian";
+import { TFile } from "obsidian";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { OpenAIApi } from "openai-edge";
 import { createHash } from "crypto";
+import {
+	smartChunkParagraphs,
+	parseMarkdown,
+	createChunkContext,
+} from "./utils";
+import { config } from "./config";
 
 interface EmbeddingResult {
-	successCount: number
-	updatedCount: number
-	errorCount: number
-	deleteCount: number
+	successCount: number;
+	updatedCount: number;
+	errorCount: number;
+	deleteCount: number;
 }
 
 export async function generateEmbeddings(
@@ -17,22 +23,20 @@ export async function generateEmbeddings(
 	openai: OpenAIApi,
 	excludeDirs: string[],
 	publicDirs: string[],
-	debug?: boolean
+	debug?: boolean,
 ): Promise<EmbeddingResult> {
 	// Retrieve non-excluded markdown files
 	const files: TFile[] = this.app.vault
 		.getMarkdownFiles()
 		.filter((file: TFile) => !isFileInDirectories(file.path, excludeDirs));
 
-
-	if (debug)
-		console.log(files);
+	if (debug) console.log(files);
 
 	const embeddingResult: EmbeddingResult = {
 		successCount: 0,
 		updatedCount: 0,
 		errorCount: 0,
-		deleteCount: 0
+		deleteCount: 0,
 	};
 
 	for (const file of files) {
@@ -68,7 +72,9 @@ export async function generateEmbeddings(
 				} else {
 					// Update document access
 					if (debug)
-						console.log(`Updating file access: ${file.path}, setting public to ${isPublic}`);
+						console.log(
+							`Updating file access: ${file.path}, setting public to ${isPublic}`,
+						);
 
 					const { error: updateDocumentError } = await supabaseClient
 						.from("document")
@@ -87,9 +93,7 @@ export async function generateEmbeddings(
 
 			// If existing page exists but has changed, then delete existing sections and reindex file
 			if (existingDocument) {
-
-				if (debug)
-					console.log(`Reindexing file: ${file.path}`);
+				if (debug) console.log(`Reindexing file: ${file.path}`);
 
 				const { error: deleteDocumentSectionError } =
 					await supabaseClient
@@ -105,11 +109,15 @@ export async function generateEmbeddings(
 
 			// Parse frontmatter and split content into paragraphs
 			const { content, frontmatter } = parseMarkdown(markdown); // Parse the frontmatter
-			const sections = splitIntoParagraphs(content);
+			const sections = smartChunkParagraphs(content, {
+				minParagraphSize: config.minParagraphSize, // Minimum size for a chunk in characters
+				maxParagraphSize: config.maxParagraphSize, // Maximum size for a chunk in characters
+			});
 
-			// Create/update page record. Intentionally clear checksum until we
-			// have successfully generated all page sections.
+			frontmatter["path"] = file.path;
 
+			// Get first chunk context (first sentence or two)
+			// const firstChunkContext = sections[0]?.split(/[.!?][\s\n]+/)?.[0] || '';
 			const { error: upsertPageError, data: document } =
 				await supabaseClient
 					.from("document")
@@ -120,7 +128,7 @@ export async function generateEmbeddings(
 							meta: JSON.stringify(frontmatter),
 							public: isPublic,
 						},
-						{ onConflict: "path" }
+						{ onConflict: "path" },
 					)
 					.select()
 					.limit(1)
@@ -130,23 +138,28 @@ export async function generateEmbeddings(
 				console.error(upsertPageError);
 				throw upsertPageError;
 			}
-
 			if (debug)
 				console.log(
-					`[${file.path}] Adding ${sections.length} page sections (with embeddings)`
+					`[${file.path}] Adding ${sections.length} page sections (with embeddings)`,
 				);
 
-			for (const section of sections) {
-				// OpenAI recommends replacing newlines with spaces for best results (specific to embeddings)
-				const input = section.replace(/\n/g, " ");
+			for (let i = 0; i < sections.length; i++) {
+				const section = sections[i];
+				const input = createChunkContext(
+					section,
+					frontmatter,
+					file.path,
+					"",
+				);
+
 				try {
 					const embeddingResponse = await openai.createEmbedding({
-						model: "text-embedding-3-small",
+						model: config.embeddingModel,
 						input,
 					});
 
 					if (embeddingResponse.status !== 200) {
-						console.error("Embedding Failed!")
+						console.error("Embedding Failed!");
 						throw new Error("Embedding failed");
 					}
 
@@ -172,11 +185,12 @@ export async function generateEmbeddings(
 				} catch (err) {
 					// TODO: decide how to better handle failed embeddings
 					console.error(
-						`Failed to generate embeddings for '${file.path
+						`Failed to generate embeddings for '${
+							file.path
 						}' page section starting with '${input.slice(
 							0,
-							40
-						)}...'`
+							40,
+						)}...'`,
 					);
 
 					throw err;
@@ -195,10 +209,9 @@ export async function generateEmbeddings(
 
 			embeddingResult.successCount += 1;
 			embeddingResult.updatedCount += 1;
-
 		} catch (err) {
 			console.error(
-				`Page '${file.path}' or one/multiple of its page sections failed to store properly. Page has been marked with null checksum to indicate that it needs to be re-generated.`
+				`Page '${file.path}' or one/multiple of its page sections failed to store properly. Page has been marked with null checksum to indicate that it needs to be re-generated.`,
 			);
 			embeddingResult.errorCount += 1;
 		}
@@ -209,20 +222,18 @@ export async function generateEmbeddings(
 		await supabaseClient
 			.from("document")
 			.select("id, path, checksum, public");
-	
-			console.log(existingDocuments);
-			console.log(files);
 
 	if (fetchDocumentError) {
 		embeddingResult.errorCount += 1;
 		console.error(
-			`Unable to retrieve all documents to find dangling documents!`
+			`Unable to retrieve all documents to find dangling documents!`,
 		);
 		console.error(fetchDocumentError);
 	} else {
-
 		for (const document of existingDocuments) {
-			console.log((files.find((file) => file.path === document.path)) !== undefined);
+			console.log(
+				files.find((file) => file.path === document.path) !== undefined,
+			);
 			if (files.find((file) => file.path === document.path)) {
 				// Means that the file is found
 				continue;
@@ -232,12 +243,12 @@ export async function generateEmbeddings(
 			const { error: deleteDocumentError } = await supabaseClient
 				.from("document")
 				.delete()
-				.eq('path', document.path);
+				.eq("path", document.path);
 
 			if (deleteDocumentError) {
 				embeddingResult.errorCount += 1;
 				console.error(
-					`Unable to delete dangling documents at path ${document.path}`
+					`Unable to delete dangling documents at path ${document.path}`,
 				);
 				console.error(deleteDocumentError);
 			}
@@ -251,7 +262,7 @@ export async function generateEmbeddings(
 function isFileInDirectories(filePath: string, directories: string[]): boolean {
 	const normalizedFilePath = path.normalize(filePath);
 	const normalizedDirectories = directories.map((directory) =>
-		path.normalize(directory)
+		path.normalize(directory),
 	);
 
 	for (const directory of normalizedDirectories) {
@@ -261,38 +272,4 @@ function isFileInDirectories(filePath: string, directories: string[]): boolean {
 	}
 
 	return false;
-}
-
-function parseMarkdown(markdown: string): {
-	content: string;
-	// eslint-disable-next-line
-	frontmatter: Record<string, any>;
-} {
-	const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/; // Regular expression to match frontmatter
-	const match = markdown.match(frontmatterRegex);
-
-	let content = markdown;
-	// eslint-disable-next-line
-	let frontmatter: Record<string, any> = {};
-
-	if (match && match[1]) {
-		const frontmatterString = match[1];
-		try {
-			frontmatter = parseYaml(frontmatterString);
-			content = content.replace(match[0], ""); // Remove frontmatter from content
-		} catch (error) {
-			console.error(`Error parsing frontmatter: ${error}`);
-		}
-	}
-
-	return { content, frontmatter };
-}
-
-function splitIntoParagraphs(text: string): string[] {
-	const paragraphs = text.split(/\r?\n\s*\r?\n/); // Split text by empty lines
-
-	// Trim whitespace from each paragraph
-	const trimmedParagraphs = paragraphs.map((paragraph) => paragraph.trim());
-
-	return trimmedParagraphs;
 }

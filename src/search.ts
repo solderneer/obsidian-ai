@@ -6,6 +6,7 @@ import {
 } from "openai-edge";
 import { encode } from "gpt-tokenizer";
 import { codeBlock } from "common-tags";
+import { config } from "./config";
 
 export async function generativeSearch(
 	supabaseClient: SupabaseClient,
@@ -14,7 +15,7 @@ export async function generativeSearch(
 	messageHistory: ChatCompletionRequestMessage[],
 	matchThreshold = 0.78,
 	matchCount = 10,
-	minContentLength = 50
+	minContentLength = 50,
 ) {
 	const matches = await semanticSearch(
 		supabaseClient,
@@ -22,7 +23,7 @@ export async function generativeSearch(
 		query,
 		matchThreshold,
 		matchCount,
-		minContentLength
+		minContentLength,
 	);
 
 	// Only send 1500 tokens maximum
@@ -60,7 +61,7 @@ export async function generativeSearch(
 	messageHistory.push(chatMessage);
 
 	const response = await openai.createChatCompletion({
-		model: "gpt-4o-mini",
+		model: config.chatModel,
 		messages: messageHistory,
 	});
 
@@ -74,11 +75,11 @@ export async function semanticSearch(
 	query: string,
 	matchThreshold = 0.78,
 	matchCount = 10,
-	minContentLength = 50
+	minContentLength = 50,
 ) {
 	// Create embedding from query
 	const embeddingResponse = await openai.createEmbedding({
-		model: "text-embedding-3-small",
+		model: config.embeddingModel,
 		input: query.split("\n").join(" "),
 	});
 
@@ -101,6 +102,7 @@ export async function semanticSearch(
 	if (matchError) {
 		throw new Error("Failed to match document sections");
 	}
+	console.log('document sections', documentSections);
 
 	for (const section of documentSections) {
 		const { error: fetchDocumentError, data: document } =
