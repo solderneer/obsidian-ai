@@ -141,7 +141,7 @@ export async function generateEmbeddings(
 				const input = section.replace(/\n/g, " ");
 				try {
 					const embeddingResponse = await openai.createEmbedding({
-						model: "text-embedding-ada-002",
+						model: "text-embedding-3-small",
 						input,
 					});
 
