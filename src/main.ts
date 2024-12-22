@@ -1,6 +1,5 @@
 import { App, SuggestModal, Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
 
-import Typed from "typed.js";
 import * as path from "path";
 
 import { oneLine } from "common-tags";
@@ -10,6 +9,7 @@ import {
 	Configuration,
 	OpenAIApi,
 	CreateModerationResponse,
+	ChatCompletionRequestMessage
 } from "openai-edge";
 
 // Local things
@@ -247,11 +247,15 @@ interface SearchResult {
 type KeyListener = (event: KeyboardEvent) => void;
 
 class AISearchModal extends SuggestModal<SearchResult> {
-	private keyListener: KeyListener;
-	private supabaseClient: SupabaseClient;
+	private triggerChatListener: KeyListener;
+	private chatSendListener: KeyListener;
 	private prompt: string;
-	private typedInstance: Typed;
+
+	// APIs
+	private supabaseClient: SupabaseClient;
 	private openai: OpenAIApi;
+
+	// Settings
 	private semanticSearchSettings: SearchSettings;
 	private generativeSearchSettings: SearchSettings;
 
@@ -312,77 +316,107 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		});
 		this.resultContainerEl.before(leadingPromptHTML);
 
+		// Programmatically build the AI chat interface
+		const chatContainerHTML = document.createElement("div");
+		chatContainerHTML.addClass("chat-container");
+		chatContainerHTML.style.display = "none";
+
+		const backButton = chatContainerHTML.createEl("button", {cls: "chat-back-button", text: "←"});
+		const messageContainer = chatContainerHTML.createDiv({cls: "chat-messages"});
+		const chatInputContainer = chatContainerHTML.createDiv({cls: "chat-input-container"});
+		const chatInput = chatInputContainer.createEl("input", {type: "search", cls: "chat-input", placeholder: "Type your message..."});
+		this.resultContainerEl.before(chatContainerHTML);
+
+		const backButtonListener = async (_: MouseEvent) => {
+			// Register AI chat handlers
+			const promptInput = document.querySelector(".prompt-input-container") as HTMLElement;
+			const promptLeading = document.querySelector(".prompt-leading") as HTMLElement;
+			const promptResults = document.querySelector(".prompt-results") as HTMLElement;
+
+			promptInput.style.display = "block";
+			promptLeading.style.display = "block";
+			promptResults.style.display = "block";
+			chatContainerHTML.style.display = "none";
+
+			document.removeEventListener("click", backButtonListener);
+			document.removeEventListener("keydown", this.chatSendListener);
+			document.addEventListener("keydown", this.triggerChatListener);
+		};
+
+		backButton.addEventListener("click", backButtonListener);
+
+		const addMessage = (sender: string, text: string) => {
+			const messageDiv = document.createElement("div");
+			messageDiv.className = "message " + sender
+
+			const messageSender = document.createElement("div");
+			messageSender.className = "message-sender";
+			messageSender.textContent = sender + ':';
+		
+			const messageText = document.createElement("div");
+			messageText.className = "message-text";
+			messageText.textContent = text;
+		
+			messageDiv.appendChild(messageSender);
+			messageDiv.appendChild(messageText);
+		
+			messageContainer.appendChild(messageDiv);
+		}
+
+		// Setting up the API call context
+		const messageHistory: ChatCompletionRequestMessage[] = [];
+		messageHistory.push({role: "system", content: this.prompt});
+
+		this.chatSendListener = async (event: KeyboardEvent) => {
+			if (event.shiftKey && event.key === "Enter") {
+				const message = chatInput.value.trim();
+				if (message !== "") {
+					addMessage("you", message);
+					chatInput.value = "";
+
+					const res = await generativeSearch(this.supabaseClient, this.openai, message, messageHistory, this.generativeSearchSettings.matchThreshold,
+						this.generativeSearchSettings.matchCount,
+						this.generativeSearchSettings.minContentLength)
+					
+					addMessage("assistant", res);
+					messageHistory.push({role: "assistant", content: res});
+				}
+			}
+		};
+
 		// Setting the placeholder
 		this.setPlaceholder("Enter query to ✨ AI ✨ search...");
 	}
 
 	onOpen(): void {
-		this.keyListener = async (event: KeyboardEvent) => {
+		this.triggerChatListener = async (event: KeyboardEvent) => {
 			if (event.shiftKey && event.key === "Enter") {
-				if (this.typedInstance) {
-					this.typedInstance.destroy();
-				}
+				console.log("Hello!");
 
-				this.typedInstance = new Typed(".obsidian-ai-tools-answer", {
-					strings: ["Thinking..."],
-					typeSpeed: 50,
-					showCursor: false,
-				});
+				// Disable answer boxes
+				const promptInput = document.querySelector(".prompt-input-container") as HTMLElement;
+				const promptLeading = document.querySelector(".prompt-leading") as HTMLElement;
+				const promptResults = document.querySelector(".prompt-results") as HTMLElement;
 
-				// Get prompt input
-				const inputEl = document.querySelector(
-					".prompt-input"
-				) as HTMLInputElement;
+				promptInput.style.display = "none";
+				promptLeading.style.display = "none";
+				promptResults.style.display = "none";
 
-				const query = inputEl.value;
-				// Sanitize input query
-				// Moderate the content to comply with OpenAI T&C
-				const moderationResponse: CreateModerationResponse =
-					await this.openai
-						.createModeration({ input: query.trim() })
-						.then((res) => res.json());
+				// Enable chat boxes
+				const chatContainer = document.querySelector(".chat-container") as HTMLElement;
+				chatContainer.style.display = "block";
 
-				const [moderationRes] = moderationResponse.results;
-
-				if (moderationRes.flagged) {
-					throw new Error("Flagged content");
-				}
-
-				try {
-					const answer = await generativeSearch(
-						this.supabaseClient,
-						this.openai,
-						query,
-						this.prompt,
-						this.generativeSearchSettings.matchThreshold,
-						this.generativeSearchSettings.matchCount,
-						this.generativeSearchSettings.minContentLength
-					);
-
-					if (this.typedInstance) {
-						this.typedInstance.destroy();
-					}
-					this.typedInstance = new Typed(".obsidian-ai-tools-answer", {
-						strings: [answer ?? "No answer"],
-						typeSpeed: 75,
-						showCursor: false,
-					});
-
-				} catch(err) {
-					new Notice(`Error: ${err.message}`);
-				}
+				document.removeEventListener("keydown", this.triggerChatListener);
+				document.addEventListener("keydown", this.chatSendListener);
 			}
 		};
 
-		document.addEventListener("keydown", this.keyListener);
+		document.addEventListener("keydown", this.triggerChatListener);
 	}
 
 	onClose(): void {
-		// Kill old typed instance if any
-		if (this.typedInstance) {
-			this.typedInstance.destroy();
-		}
-		document.removeEventListener("keydown", this.keyListener);
+		document.removeEventListener("keydown", this.chatSendListener);
+		document.removeEventListener("keydown", this.triggerChatListener);
 	}
 
 	// Returns all available suggestions.
