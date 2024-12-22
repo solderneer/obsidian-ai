@@ -111,6 +111,8 @@ CREATE TABLE "public"."document_section" (
     "embedding" "public"."vector"(1536)
 );
 
+CREATE INDEX ON "public"."document_section" USING hnsw (embedding "public"."vector_cosine_ops");
+
 ALTER TABLE "public"."document_section" OWNER TO "postgres";
 
 CREATE SEQUENCE "public"."document_section_id_seq"
@@ -151,82 +153,82 @@ ALTER TABLE "public"."document" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."document_section" ENABLE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
-GRANT USAGE ON SCHEMA "public" TO "anon";
+-- GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_in"("cstring", "oid", integer) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_in"("cstring", "oid", integer) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_in"("cstring", "oid", integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_in"("cstring", "oid", integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_in"("cstring", "oid", integer) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_out"("public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_out"("public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_out"("public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_out"("public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_out"("public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_recv"("internal", "oid", integer) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_recv"("internal", "oid", integer) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_recv"("internal", "oid", integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_recv"("internal", "oid", integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_recv"("internal", "oid", integer) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_send"("public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_send"("public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_send"("public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_send"("public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_send"("public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_typmod_in"("cstring"[]) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_typmod_in"("cstring"[]) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_typmod_in"("cstring"[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_typmod_in"("cstring"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_typmod_in"("cstring"[]) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."array_to_vector"(real[], integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."array_to_vector"(real[], integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."array_to_vector"(real[], integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(real[], integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(real[], integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."array_to_vector"(double precision[], integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."array_to_vector"(double precision[], integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."array_to_vector"(double precision[], integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(double precision[], integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(double precision[], integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."array_to_vector"(integer[], integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."array_to_vector"(integer[], integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."array_to_vector"(integer[], integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(integer[], integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(integer[], integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."array_to_vector"(numeric[], integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."array_to_vector"(numeric[], integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."array_to_vector"(numeric[], integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(numeric[], integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."array_to_vector"(numeric[], integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_to_float4"("public"."vector", integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_to_float4"("public"."vector", integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_to_float4"("public"."vector", integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_to_float4"("public"."vector", integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_to_float4"("public"."vector", integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector"("public"."vector", integer, boolean) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector"("public"."vector", integer, boolean) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector"("public"."vector", integer, boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector"("public"."vector", integer, boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector"("public"."vector", integer, boolean) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cosine_distance"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."inner_product"("public"."vector", "public"."vector") TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "postgres";
-GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "anon";
-GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "service_role";
+-- GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "postgres";
+-- GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "authenticated";
+-- GRANT ALL ON FUNCTION "public"."ivfflathandler"("internal") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."l2_distance"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."l2_distance"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."l2_distance"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."l2_distance"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."l2_distance"("public"."vector", "public"."vector") TO "service_role";
 
@@ -234,128 +236,128 @@ GRANT ALL ON FUNCTION "public"."match_document_sections"("embedding" "public"."v
 GRANT ALL ON FUNCTION "public"."match_document_sections"("embedding" "public"."vector", "match_threshold" double precision, "match_count" integer, "min_content_length" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_document_sections"("embedding" "public"."vector", "match_threshold" double precision, "match_count" integer, "min_content_length" integer) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "public"."vector", "match_count" integer, "filter" "jsonb") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "public"."vector", "match_count" integer, "filter" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "public"."vector", "match_count" integer, "filter" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "public"."vector", "match_count" integer, "filter" "jsonb") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_accum"(double precision[], "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_accum"(double precision[], "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_accum"(double precision[], "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_accum"(double precision[], "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_accum"(double precision[], "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_add"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_add"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_add"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_add"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_add"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_avg"(double precision[]) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_avg"(double precision[]) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_avg"(double precision[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_avg"(double precision[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_avg"(double precision[]) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_cmp"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_cmp"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_cmp"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_cmp"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_cmp"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_combine"(double precision[], double precision[]) TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_combine"(double precision[], double precision[]) TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_combine"(double precision[], double precision[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_combine"(double precision[], double precision[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_combine"(double precision[], double precision[]) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_dims"("public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_dims"("public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_dims"("public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_dims"("public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_dims"("public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_eq"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_eq"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_eq"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_eq"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_eq"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_ge"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_ge"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_ge"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_ge"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_ge"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_gt"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_gt"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_gt"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_gt"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_gt"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_l2_squared_distance"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_l2_squared_distance"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_l2_squared_distance"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_l2_squared_distance"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_l2_squared_distance"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_le"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_le"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_le"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_le"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_le"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_lt"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_lt"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_lt"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_lt"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_lt"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_ne"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_ne"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_ne"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_ne"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_ne"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_negative_inner_product"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_negative_inner_product"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_negative_inner_product"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_negative_inner_product"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_negative_inner_product"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_norm"("public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_norm"("public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_norm"("public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_norm"("public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_norm"("public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_spherical_distance"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_spherical_distance"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_spherical_distance"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_spherical_distance"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_spherical_distance"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."vector_sub"("public"."vector", "public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."vector_sub"("public"."vector", "public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."vector_sub"("public"."vector", "public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."vector_sub"("public"."vector", "public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."vector_sub"("public"."vector", "public"."vector") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."avg"("public"."vector") TO "postgres";
-GRANT ALL ON FUNCTION "public"."avg"("public"."vector") TO "anon";
+-- GRANT ALL ON FUNCTION "public"."avg"("public"."vector") TO "anon";
 GRANT ALL ON FUNCTION "public"."avg"("public"."vector") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."avg"("public"."vector") TO "service_role";
 
-GRANT ALL ON TABLE "public"."document" TO "anon";
+-- GRANT ALL ON TABLE "public"."document" TO "anon";
 GRANT ALL ON TABLE "public"."document" TO "authenticated";
 GRANT ALL ON TABLE "public"."document" TO "service_role";
 
-GRANT ALL ON SEQUENCE "public"."document_id_seq" TO "anon";
+-- GRANT ALL ON SEQUENCE "public"."document_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."document_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."document_id_seq" TO "service_role";
 
-GRANT ALL ON TABLE "public"."document_section" TO "anon";
+-- GRANT ALL ON TABLE "public"."document_section" TO "anon";
 GRANT ALL ON TABLE "public"."document_section" TO "authenticated";
 GRANT ALL ON TABLE "public"."document_section" TO "service_role";
 
-GRANT ALL ON SEQUENCE "public"."document_section_id_seq" TO "anon";
+-- GRANT ALL ON SEQUENCE "public"."document_section_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."document_section_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."document_section_id_seq" TO "service_role";
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "anon";
+-- ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES  TO "service_role";
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "anon";
+-- ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS  TO "service_role";
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "anon";
+-- ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES  TO "service_role";
 

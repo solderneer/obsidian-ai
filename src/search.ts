@@ -60,7 +60,7 @@ export async function generativeSearch(
 	};
 
 	const response = await openai.createChatCompletion({
-		model: "gpt-3.5-turbo",
+		model: "gpt-4o-mini",
 		messages: [chatMessage],
 	});
 
@@ -78,7 +78,7 @@ export async function semanticSearch(
 ) {
 	// Create embedding from query
 	const embeddingResponse = await openai.createEmbedding({
-		model: "text-embedding-ada-002",
+		model: "text-embedding-3-small",
 		input: query.split("\n").join(" "),
 	});
 
