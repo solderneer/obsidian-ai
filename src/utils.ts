@@ -188,9 +188,11 @@ export function createChunkContext(
 
 	// Extract title and tags from metadata
 	const anyMetadata = metadata as any;
-	const title = anyMetadata.title ? `Title: ${anyMetadata.title}` : `Title: ${path}`;
+	const title = anyMetadata.title
+		? `Title: ${anyMetadata.title}`
+		: `Title: ${path}`;
 	const tags = anyMetadata.tags ? `Tags: ${anyMetadata.tags.join(", ")}` : "";
-	
+
 	// Combine everything into a structured format
 	return [
 		title,

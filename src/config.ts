@@ -3,6 +3,7 @@ export interface AIConfig {
 	chatModel: string;
 	minParagraphSize: number;
 	maxParagraphSize: number;
+	minLengthBeforeAutoSearch: number;
 }
 
 export const config: AIConfig = {
@@ -10,4 +11,5 @@ export const config: AIConfig = {
 	chatModel: "gpt-4o-mini",
 	minParagraphSize: 200,
 	maxParagraphSize: 600,
+	minLengthBeforeAutoSearch: 10,
 };

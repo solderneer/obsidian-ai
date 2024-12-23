@@ -102,7 +102,7 @@ export async function semanticSearch(
 	if (matchError) {
 		throw new Error("Failed to match document sections");
 	}
-	console.log('document sections', documentSections);
+	console.log("document sections", documentSections);
 
 	for (const section of documentSections) {
 		const { error: fetchDocumentError, data: document } =

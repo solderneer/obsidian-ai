@@ -1,3 +1,10 @@
+# Left in my quick hacky updates
+
+- add super basic text search to the sql function
+- only use real words (remove stop words) -> use OR or AND? (or do I do a seperate search and then return both results in order)
+- fix the bug when you do Shift-Enter it doesnt put the existing query in the search bar.
+- use scrollIntoView to scroll the search results into view
+
 # Obsidian AI
 
 > Talk to an LLM clone of yourself, or even host it for everyone else to talk to

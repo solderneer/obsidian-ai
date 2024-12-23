@@ -6,6 +6,8 @@ import {
 	Setting,
 	Notice,
 	MarkdownView,
+	debounce,
+	Debouncer,
 } from "obsidian";
 
 import * as path from "path";
@@ -42,6 +44,8 @@ interface ObsidianAISettings {
 	chatModel: string;
 	minParagraphSize: number;
 	maxParagraphSize: number;
+	searchAsYouType: boolean;
+	minLengthBeforeAutoSearch: number;
 
 	// Directory settings
 	excludedDirs: string;
@@ -66,6 +70,8 @@ const DEFAULT_SETTINGS: ObsidianAISettings = {
 	chatModel: config.chatModel,
 	minParagraphSize: config.minParagraphSize,
 	maxParagraphSize: config.maxParagraphSize,
+	searchAsYouType: false,
+	minLengthBeforeAutoSearch: config.minLengthBeforeAutoSearch,
 
 	excludedDirs: "",
 	excludedDirsList: [],
@@ -81,15 +87,15 @@ const DEFAULT_SETTINGS: ObsidianAISettings = {
 	Keep all responses concise and to the point.`,
 
 	semanticSearch: {
-		matchThreshold: 0.78,
+		matchThreshold: 0.3,
 		matchCount: 10,
-		minContentLength: 50,
+		minContentLength: 10,
 	},
 
 	generativeSearch: {
-		matchThreshold: 0.78,
+		matchThreshold: 0.3,
 		matchCount: 10,
-		minContentLength: 50,
+		minContentLength: 10,
 	},
 };
 
@@ -199,6 +205,8 @@ export default class ObsidianAIPlugin extends Plugin {
 							this.settings.prompt,
 							this.settings.semanticSearch,
 							this.settings.generativeSearch,
+							this.settings.searchAsYouType,
+							this.settings.minLengthBeforeAutoSearch,
 						).open();
 					}
 
@@ -276,6 +284,14 @@ class AISearchModal extends SuggestModal<SearchResult> {
 	private triggerChatListener: KeyListener;
 	private chatSendListener: KeyListener;
 	private prompt: string;
+	private readonly debouncedSearch: Debouncer<
+		[query: string],
+		SearchResult[]
+	>;
+	private results: SearchResult[] = [];
+	private searchQuery: string = "";
+	private searchAsYouType: boolean;
+	private minLengthBeforeAutoSearch: number;
 
 	// APIs
 	private supabaseClient: SupabaseClient;
@@ -292,6 +308,8 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		prompt: string,
 		semanticSearchSettings: SearchSettings,
 		generativeSearchSettings: SearchSettings,
+		searchAsYouType: boolean,
+		minLengthBeforeAutoSearch: number,
 	) {
 		super(app);
 
@@ -300,12 +318,18 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		this.prompt = prompt;
 		this.semanticSearchSettings = semanticSearchSettings;
 		this.generativeSearchSettings = generativeSearchSettings;
+		this.searchAsYouType = searchAsYouType;
+		this.minLengthBeforeAutoSearch = minLengthBeforeAutoSearch;
 
+		if (this.searchAsYouType === true) {
+			this.debouncedSearch = debounce(this.getSuggestionsInternal, 1000);
+		}
 		// Adding the instructions
 		const instructions = [
 			["↑↓", "to navigate"],
 			["↵", "to open"],
-			["shift ↵", "to ask"],
+			["Alt ↵", "to search"],
+			["shift ↵", "to ask LLM"],
 			["esc", "to dismiss"],
 		];
 		const modalInstructionsHTML = this.modalEl.createEl("div", {
@@ -334,7 +358,7 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		});
 		promptAnswerHTML.createSpan({
 			cls: "obsidian-ai-tools-answer",
-			text: "press shift ↵ to generate answer",
+			text: "press alt ↵ to search or shift ↵ to generate answer",
 		});
 		leadingPromptHTML.createDiv({
 			cls: "prompt-subheading",
@@ -439,6 +463,11 @@ class AISearchModal extends SuggestModal<SearchResult> {
 
 	onOpen(): void {
 		this.triggerChatListener = async (event: KeyboardEvent) => {
+			// the pure enter does not trigget this - i assume something else is changing it....
+			if (event.altKey && event.key === "Enter") {
+				console.log(this.inputEl.value);
+				this.getSuggestionsInternal(this.inputEl.value, true);
+			}
 			if (event.shiftKey && event.key === "Enter") {
 				console.log("Hello!");
 
@@ -479,41 +508,57 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		document.removeEventListener("keydown", this.triggerChatListener);
 	}
 
-	// Returns all available suggestions.
 	async getSuggestions(query: string): Promise<SearchResult[]> {
-		// implement debouncer https://github.com/joethei/obsidian-calibre/blob/master/src/modals/BookSuggestModal.ts#L14
-		console.log('Trying to get suggestions for:', query);
-		if(query.length < 20) {
-			return [];
+		if (this.searchAsYouType === true) {
+			this.debouncedSearch(query);
 		}
+		return this.results;
+	}
 
-		// Sanitize input query
-		// Moderate the content to comply with OpenAI T&C
-		console.log("Looking at suggestions for:", query);
-		const moderationResponse: CreateModerationResponse = await this.openai
-			.createModeration({ input: query.trim() })
-			.then((res) => res.json());
+	// Returns all available suggestions.
+	async getSuggestionsInternal(query: string, forceDespiteLength = false) {
+		if (
+			query.trim() != this.searchQuery.trim() &&
+			(query.length > this.minLengthBeforeAutoSearch ||
+				forceDespiteLength)
+		) {
+			this.searchQuery = query;
+			// Sanitize input query
+			// Moderate the content to comply with OpenAI T&C
+			console.log("Looking at suggestions for:", query);
+			const moderationResponse: CreateModerationResponse =
+				await this.openai
+					.createModeration({ input: query.trim() })
+					.then((res) => res.json());
 
-		const [moderationRes] = moderationResponse.results;
+			const [moderationRes] = moderationResponse.results;
 
-		if (moderationRes.flagged) {
-			throw new Error("Flagged content");
-		}
+			if (moderationRes.flagged) {
+				this.results = [];
+				//@ts-ignore
+				this.updateSuggestions();
 
-		try {
-			const results: SearchResult[] = await semanticSearch(
-				this.supabaseClient,
-				this.openai,
-				query,
-				this.semanticSearchSettings.matchThreshold,
-				this.semanticSearchSettings.matchCount,
-				this.semanticSearchSettings.minContentLength,
-			);
-			return results;
-		} catch (err) {
-			console.error('ARGH- failed', err);
-			new Notice(`Error: ${err.message}`);
-			return [];
+				throw new Error("Flagged content");
+			}
+
+			try {
+				const results: SearchResult[] = await semanticSearch(
+					this.supabaseClient,
+					this.openai,
+					query,
+					this.semanticSearchSettings.matchThreshold,
+					this.semanticSearchSettings.matchCount,
+					this.semanticSearchSettings.minContentLength,
+				);
+				this.results = results;
+			} catch (err) {
+				console.error("ARGH- failed", err);
+				new Notice(`Error: ${err.message}`);
+				this.results = [];
+			}
+
+			//@ts-ignore
+			this.updateSuggestions();
 		}
 	}
 
@@ -536,18 +581,19 @@ class AISearchModal extends SuggestModal<SearchResult> {
 			(file) =>
 				path.resolve(file.path) === path.resolve(result.document.path),
 		);
-		if (selected) leaf.openFile(selected).then(() => {
-            const view = leaf.view;
-            if (view instanceof MarkdownView && view.editor) {
-                const text = result.content;
-                const content = view.editor.getValue();
-                const position = content.indexOf(text);
-                if (position !== -1) {
-                    const pos = view.editor.offsetToPos(position);
-                    view.editor.setCursor(pos);
-                }
-            }
-		});
+		if (selected)
+			leaf.openFile(selected).then(() => {
+				const view = leaf.view;
+				if (view instanceof MarkdownView && view.editor) {
+					const text = result.content;
+					const content = view.editor.getValue();
+					const position = content.indexOf(text);
+					if (position !== -1) {
+						const pos = view.editor.offsetToPos(position);
+						view.editor.setCursor(pos);
+					}
+				}
+			});
 	}
 }
 
@@ -684,18 +730,34 @@ class SettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-		.setName("Min Chunk Size")
-		.setDesc("Min chunk size for embeddings (read-only)")
-		.addText((text) =>
-			text.setValue(this.plugin.settings.minParagraphSize.toString()).setDisabled(true),
-		);
+			.setName("Min Chunk Size")
+			.setDesc("Min chunk size for embeddings (read-only)")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.minParagraphSize.toString())
+					.setDisabled(true),
+			);
 
 		new Setting(containerEl)
-		.setName("Max Chunk Size")
-		.setDesc("Max chunk size for embeddings (read-only)")
-		.addText((text) =>
-			text.setValue(this.plugin.settings.maxParagraphSize.toString()).setDisabled(true),
-		);
+			.setName("Max Chunk Size")
+			.setDesc("Max chunk size for embeddings (read-only)")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.maxParagraphSize.toString())
+					.setDisabled(true),
+			);
+
+		new Setting(containerEl)
+			.setName("Search As You Type")
+			.setDesc("Search as you type (debounce 1s) OR on Alt + Enter")
+			.addToggle((component) =>
+				component
+					.setValue(this.plugin.settings.searchAsYouType)
+					.onChange(async (value) => {
+						this.plugin.settings.searchAsYouType = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 
 		containerEl.createEl("div", {
 			cls: "setting-item setting-item-heading",

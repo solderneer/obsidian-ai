@@ -1,5 +1,8 @@
-import { parseMarkdown, createChunkContext, smartChunkParagraphs } from "./src/utils";
-
+import {
+	parseMarkdown,
+	createChunkContext,
+	smartChunkParagraphs,
+} from "./src/utils";
 
 const testText = `
 # Trillion Dollar Coach (Bill Campbell), Eric Schmidt, Jonathan Rosenberg, Alan Eagle
