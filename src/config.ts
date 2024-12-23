@@ -3,13 +3,15 @@ export interface AIConfig {
 	chatModel: string;
 	minParagraphSize: number;
 	maxParagraphSize: number;
+	charsFromPreviousParagraph: number;
 	minLengthBeforeAutoSearch: number;
 }
 
 export const config: AIConfig = {
 	embeddingModel: "text-embedding-3-small",
 	chatModel: "gpt-4o-mini",
-	minParagraphSize: 200,
-	maxParagraphSize: 600,
+	minParagraphSize: 250,
+	maxParagraphSize: 1000,
+	charsFromPreviousParagraph: 100,
 	minLengthBeforeAutoSearch: 10,
 };

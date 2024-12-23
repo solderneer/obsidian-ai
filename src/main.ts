@@ -42,6 +42,7 @@ interface ObsidianAISettings {
 
 	embeddingModel: string;
 	chatModel: string;
+	charsFromPreviousParagraph: number;
 	minParagraphSize: number;
 	maxParagraphSize: number;
 	searchAsYouType: boolean;
@@ -68,6 +69,7 @@ const DEFAULT_SETTINGS: ObsidianAISettings = {
 
 	embeddingModel: config.embeddingModel,
 	chatModel: config.chatModel,
+	charsFromPreviousParagraph: config.charsFromPreviousParagraph,
 	minParagraphSize: config.minParagraphSize,
 	maxParagraphSize: config.maxParagraphSize,
 	searchAsYouType: false,
@@ -301,6 +303,8 @@ class AISearchModal extends SuggestModal<SearchResult> {
 	private semanticSearchSettings: SearchSettings;
 	private generativeSearchSettings: SearchSettings;
 
+	private chatInput: HTMLInputElement;
+
 	constructor(
 		app: App,
 		supabaseClient: SupabaseClient,
@@ -381,11 +385,12 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		const chatInputContainer = chatContainerHTML.createDiv({
 			cls: "chat-input-container",
 		});
-		const chatInput = chatInputContainer.createEl("input", {
+		this.chatInput = chatInputContainer.createEl("input", {
 			type: "search",
 			cls: "chat-input",
 			placeholder: "Type your message...",
 		});
+
 		this.resultContainerEl.before(chatContainerHTML);
 
 		const backButtonListener = async (_: MouseEvent) => {
@@ -436,10 +441,10 @@ class AISearchModal extends SuggestModal<SearchResult> {
 
 		this.chatSendListener = async (event: KeyboardEvent) => {
 			if (event.shiftKey && event.key === "Enter") {
-				const message = chatInput.value.trim();
+				const message = this.chatInput.value.trim();
 				if (message !== "") {
 					addMessage("you", message);
-					chatInput.value = "";
+					this.chatInput.value = "";
 
 					const res = await generativeSearch(
 						this.supabaseClient,
@@ -465,12 +470,10 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		this.triggerChatListener = async (event: KeyboardEvent) => {
 			// the pure enter does not trigget this - i assume something else is changing it....
 			if (event.altKey && event.key === "Enter") {
-				console.log(this.inputEl.value);
 				this.getSuggestionsInternal(this.inputEl.value, true);
 			}
 			if (event.shiftKey && event.key === "Enter") {
-				console.log("Hello!");
-
+				this.chatInput.value = this.inputEl.value;
 				// Disable answer boxes
 				const promptInput = document.querySelector(
 					".prompt-input-container",
@@ -567,9 +570,12 @@ class AISearchModal extends SuggestModal<SearchResult> {
 		const name = path.parse(result.document.path).name;
 		el.classList.add("prompt-suggestion-item");
 		el.createEl("div", { cls: "prompt-suggestion-header", text: name });
+		// combine similarity (as a percentage) and first 200 characters of content
+		const similarity = Math.round(parseFloat(result.similarity) * 100);
+		const content = truncateString(removeMarkdown(result.content), 200);
 		el.createEl("div", {
 			cls: "prompt-suggestion-content",
-			text: truncateString(removeMarkdown(result.content), 200),
+			text: `${similarity}% - ${content}`,
 		});
 	}
 
@@ -727,6 +733,15 @@ class SettingTab extends PluginSettingTab {
 			.setDesc("The OpenAI model used for chat completions (read-only)")
 			.addText((text) =>
 				text.setValue(this.plugin.settings.chatModel).setDisabled(true),
+			);
+
+		new Setting(containerEl)
+			.setName("Overlap from previous paragraph")
+			.setDesc("Number of characters to overlap from previous paragraph (read-only)")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.charsFromPreviousParagraph.toString())
+					.setDisabled(true),
 			);
 
 		new Setting(containerEl)

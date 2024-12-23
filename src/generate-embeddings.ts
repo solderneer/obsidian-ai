@@ -125,7 +125,7 @@ export async function generateEmbeddings(
 						{
 							checksum: null,
 							path: file.path,
-							meta: JSON.stringify(frontmatter),
+							meta: frontmatter,
 							public: isPublic,
 						},
 						{ onConflict: "path" },
@@ -145,11 +145,22 @@ export async function generateEmbeddings(
 
 			for (let i = 0; i < sections.length; i++) {
 				const section = sections[i];
+
+				// include some context from the previous paragraph
+				let previousSectionChopped = "";
+				if (i > 0 && config.charsFromPreviousParagraph > 0) {
+					const previousSection = sections[i - 1];
+					if (previousSection.length > config.charsFromPreviousParagraph) {
+						previousSectionChopped = previousSection.slice(
+							previousSection.length - config.charsFromPreviousParagraph,
+						);
+					}
+				}
 				const input = createChunkContext(
 					section,
 					frontmatter,
 					file.path,
-					"",
+					previousSectionChopped,
 				);
 
 				try {

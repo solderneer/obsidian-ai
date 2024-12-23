@@ -47,15 +47,15 @@ export function removeMarkdown(text: string): string {
 }
 
 interface ChunkingOptions {
-	minParagraphSize?: number;
-	maxParagraphSize?: number;
+	minParagraphSize: number;
+	maxParagraphSize: number;
 }
 
 export function smartChunkParagraphs(
 	text: string,
-	options: ChunkingOptions = {},
+	options: ChunkingOptions,
 ): string[] {
-	const { minParagraphSize = 100, maxParagraphSize = 500 } = options;
+	const {minParagraphSize = 250, maxParagraphSize = 1000 } = options;
 
 	// Split text by empty lines (keeping your existing logic)
 	const paragraphs = text.split(/\r?\n\s*\r?\n/);
@@ -180,11 +180,13 @@ export function createChunkContext(
 	path: string,
 	prevContext?: string,
 ): string {
-	// For non-first chunks, include a brief snippet of previous content
-	// but keep it very concise (e.g., last sentence or ~50 words)
-	const previousContext = prevContext
-		? `Previous: ${prevContext.split(".").slice(-1)[0].trim()}`
-		: "";
+	// combine previous context + content with no additional markers:
+	let content = ""
+	if (prevContext) {
+		content = `${prevContext}\n\n${section}`
+	} else {
+		content = section
+	}
 
 	// Extract title and tags from metadata
 	const anyMetadata = metadata as any;
@@ -197,9 +199,8 @@ export function createChunkContext(
 	return [
 		title,
 		tags,
-		previousContext,
 		// OpenAI recommends replacing newlines with spaces for best results (specific to embeddings)
-		`Content: ${section.replace(/\n/g, " ")}`,
+		`Content: ${content.replace(/\n/g, " ")}`,
 	]
 		.filter(Boolean)
 		.join("\n");
