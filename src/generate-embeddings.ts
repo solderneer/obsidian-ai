@@ -150,9 +150,13 @@ export async function generateEmbeddings(
 				let previousSectionChopped = "";
 				if (i > 0 && config.charsFromPreviousParagraph > 0) {
 					const previousSection = sections[i - 1];
-					if (previousSection.length > config.charsFromPreviousParagraph) {
+					if (
+						previousSection.length >
+						config.charsFromPreviousParagraph
+					) {
 						previousSectionChopped = previousSection.slice(
-							previousSection.length - config.charsFromPreviousParagraph,
+							previousSection.length -
+								config.charsFromPreviousParagraph,
 						);
 					}
 				}

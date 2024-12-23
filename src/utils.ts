@@ -55,7 +55,7 @@ export function smartChunkParagraphs(
 	text: string,
 	options: ChunkingOptions,
 ): string[] {
-	const {minParagraphSize = 250, maxParagraphSize = 1000 } = options;
+	const { minParagraphSize = 250, maxParagraphSize = 1000 } = options;
 
 	// Split text by empty lines (keeping your existing logic)
 	const paragraphs = text.split(/\r?\n\s*\r?\n/);
@@ -181,11 +181,11 @@ export function createChunkContext(
 	prevContext?: string,
 ): string {
 	// combine previous context + content with no additional markers:
-	let content = ""
+	let content = "";
 	if (prevContext) {
-		content = `${prevContext}\n\n${section}`
+		content = `${prevContext}\n\n${section}`;
 	} else {
-		content = section
+		content = section;
 	}
 
 	// Extract title and tags from metadata

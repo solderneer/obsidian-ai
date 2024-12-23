@@ -78,7 +78,7 @@ const result = smartChunkParagraphs(content, {
 const charsFromPreviousParagraph = 150;
 for (let i = 0; i < result.length; i++) {
 	const section = result[i];
-	console.log(section)
+	console.log(section);
 	let previousSectionChopped = "";
 	if (i > 0 && charsFromPreviousParagraph > 0) {
 		const previousSection = result[i - 1];
@@ -89,7 +89,7 @@ for (let i = 0; i < result.length; i++) {
 		}
 	}
 	const context = createChunkContext(section, {}, "", previousSectionChopped);
-	console.log('-----')
+	console.log("-----");
 	console.log(context);
 	console.log("==========");
 }

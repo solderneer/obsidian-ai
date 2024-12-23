@@ -737,10 +737,14 @@ class SettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Overlap from previous paragraph")
-			.setDesc("Number of characters to overlap from previous paragraph (read-only)")
+			.setDesc(
+				"Number of characters to overlap from previous paragraph (read-only)",
+			)
 			.addText((text) =>
 				text
-					.setValue(this.plugin.settings.charsFromPreviousParagraph.toString())
+					.setValue(
+						this.plugin.settings.charsFromPreviousParagraph.toString(),
+					)
 					.setDisabled(true),
 			);
 
